@@ -1,8 +1,12 @@
+turtles-own [agents lambda infected persisted necessary]
+globals [max-agents]
+
 to setup
   clear-all                                               ;; Clear all turtles and patches instanciated
   import-drawing "envoironment.png"                       ;; Loads an image as a background from the current directory the model was launched from
   import-pcolors "envoironment.png"                       ;; Import colors of the backgraound image to the patches
   setup-elements                                          ;; Setup the board with background and some turtles as the local and the animals to study
+  set max-agents count turtles with [agents]
   reset-ticks
 end
 
@@ -21,6 +25,23 @@ to setup-elements
   ask turtle item 0 squirrel[
     create-link-to turtle item 0 wolf                     ;; Create link from squirrel to wolf
   ]
+
+  ask turtles with [shape = "bug"] [
+    set agents false
+    set infected true
+    set necessary true
+  ]
+
+  ask turtles with [shape != "bug"] [
+    set agents false
+    set infected false
+    set necessary false
+  ]
+;  ask turtles with [
+;    any? out-link-neighbors = false
+;  ] [
+;    send-agent-to turtle who
+;  ]
 
 end
 
@@ -44,6 +65,7 @@ end
 
 to go
   move-turtles
+  step
   tick
 end
 
@@ -54,11 +76,121 @@ to move-turtles
   ]
 end
 
+to step
+  infect
+  ;clean
+  ;send-agents
+
+  calculate-lambda
+  tick
+end
+
+to infect
+   ask turtles with [not infected and lambda = 0] [
+     ifelse ((count out-link-neighbors with [infected] + count in-link-neighbors with [infected]) / (count out-link-neighbors + count in-link-neighbors)) * 100 >= criterion [
+       ifelse persisted < refractory [
+         set necessary false
+         set persisted persisted + 1
+       ] [
+         set color red
+         set infected true
+       ]
+     ][
+       set necessary false
+       set persisted 0
+     ]
+   ]
+   ask turtles with [any? out-link-neighbors = false] [
+    revert-edges turtle who
+  ]
+end
+
+
+;to clean
+;  ask turtles with [not infected] [
+;    ifelse ((count out-link-neighbors with [infected] + count in-link-neighbors with [infected]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > criterion [
+;      ifelse persisted < refractory [
+;        set necessary false
+;        set persisted persisted + 1
+;      ] [
+;        ifelse recontamination [
+;          ifelse any? out-link-neighbors with [agents] or any? in-link-neighbors with [agents] or agents [
+;            send-agent-to turtle who
+;          ] [
+;            set color red
+;            set infected true
+;          ]
+;        ] [
+;          send-agent-to turtle who
+;        ]
+;      ]
+;    ] [
+;      set necessary false
+;      set persisted 0
+;    ]
+;  ]
+;end
+
+;to send-agents
+;  ask turtles with [agents and not necessary] [
+;    set agents false
+;    set color green
+;  ]
+;  ask turtles with [any? out-link-neighbors = false] [
+;    revert-edges turtle who
+;  ]
+;  ask turtles with [
+;    any? out-link-neighbors = false
+;  ] [
+;    send-agent-to turtle who
+;  ]
+;  if count turtles with [agents] > max-agents
+;    [set max-agents count turtles with [agents]]
+;end
+
+;to send-agent-to [animal]
+;  ask animal [
+;    set infected false
+;    set persisted 0
+;    set agents true
+;    set color yellow
+;    set necessary true
+;  ]
+;end
+
+
+to revert-edges [animal]
+  ask animal [
+    ask in-link-neighbors [
+      create-link-from animal
+      ask out-link-to animal [die]
+    ]
+  ]
+end
+
+to calculate-lambda
+  ask turtles [set lambda -1]
+  ask turtles with [any? out-link-neighbors = false] [
+    set lambda 0
+    continue-lambda in-link-neighbors
+  ]
+end
+
+to continue-lambda [animals]
+  ask animals with [lambda = -1] [
+    if any? out-link-neighbors with [lambda = -1] = false [
+      let l 0
+      ask max-one-of out-link-neighbors [lambda] [set l lambda]
+      set lambda l + 1
+      if count in-link-neighbors > 0 [continue-lambda in-link-neighbors]
+    ]
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-167
+256
 15
-835
+924
 484
 -1
 -1
@@ -116,7 +248,7 @@ BUTTON
 43
 go
 go
-T
+NIL
 1
 T
 OBSERVER
@@ -125,6 +257,36 @@ NIL
 NIL
 NIL
 1
+
+SLIDER
+4
+125
+176
+158
+criterion
+criterion
+0
+100
+10.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+5
+164
+177
+197
+refractory
+refractory
+0
+10
+1.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?

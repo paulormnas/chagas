@@ -6,6 +6,7 @@ to setup
   import-drawing "envoironment.png"                       ;; Loads an image as a background from the current directory the model was launched from
   import-pcolors "envoironment.png"                       ;; Import colors of the backgraound image to the patches
   setup-elements                                          ;; Setup the board with background and some turtles as the local and the animals to study
+  calculate-lambda
   set max-agents count turtles with [agents]
   reset-ticks
 end
@@ -131,19 +132,16 @@ to clean
     revert-edges turtle who
   ]
 
-  ask turtles [ask out-link-neighbors with[agents]
-    [
-      if (infected and shape != "bug")[
-        send-agent-to-clean turtle who
-      ]
-    ]
-  ]
+ask turtles with [agents] [
+  ask out-link-neighbors with[infected and shape != "bug"][
+    send-agent-to-clean turtle who]
+]
 
   if count turtles with [agents] > max-agents
     [set max-agents count turtles with [agents]]
 end
 
-to send-agents
+to put-agents-on-map
   ask turtles with [shape = "wolf"] [
       send-agent-to-clean turtle who
     ]
@@ -294,7 +292,7 @@ BUTTON
 254
 44
 send agent
-send-agents
+put-agents-on-map
 NIL
 1
 T

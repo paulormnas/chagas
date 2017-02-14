@@ -12,7 +12,7 @@ end
 
 to setup-elements
   file-open file                                          ;; Read the file with specifications of the animals to be loaded for the simulation
-  create-turtles 4 [                                      ;; Instatiate the turtles with different animal's features
+  create-turtles 5 [                                      ;; Instatiate the turtles with different animal's features
     set shape file-read
     set color file-read
     setxy file-read file-read
@@ -20,11 +20,7 @@ to setup-elements
   file-close
 
   link-bugs                                               ;; Procedure to create directed links from bugs to other animals
-  let squirrel [who] of turtles with [shape = "squirrel"]
-  let wolf [who] of turtles with [shape = "wolf"]
-  ask turtle item 0 squirrel[
-    create-link-to turtle item 0 wolf                     ;; Create link from squirrel to wolf
-  ]
+  link-wolves                                             ;; Create link from squirrel to wolf
 
   ask turtles with [shape = "bug"] [
     set agents false
@@ -63,9 +59,35 @@ to link-bugs
   ]
 end
 
+to link-wolves
+  let wolves [who] of turtles with [shape = "wolf"]       ;; List with the who values of wolves turtles
+  let wolvesPrey [who] of turtles with [
+    shape = "squirrel" or shape = "mouse"]                ;; List with the who values of wolf's prey turtles
+  let wolvesCount length wolves
+  let preyCount length wolvesPrey
+  while [wolvesCount > 0][
+    let index1 wolvesCount - 1                            ;; Variable with the index of the list of wolves
+    while [preyCount > 0][
+      let index2 preyCount - 1                            ;; Variable with the index of the list of wolf's prey
+      ask turtle item index1 wolves [
+        create-link-to turtle item index2 wolvesPrey      ;; Create links from wolves to their prey
+      ]
+      set preyCount preyCount - 1
+    ]
+    set wolvesCount wolvesCount - 1
+  ]
+end
+
 to go
-  move-turtles
   step
+end
+
+to step
+  move-turtles
+  infect
+  clean
+
+  calculate-lambda
   tick
 end
 
@@ -76,88 +98,66 @@ to move-turtles
   ]
 end
 
-to step
-  infect
-  ;clean
-  ;send-agents
-
-  calculate-lambda
-  tick
-end
-
 to infect
-   ask turtles with [not infected and lambda = 0] [
-     ifelse ((count out-link-neighbors with [infected] + count in-link-neighbors with [infected]) / (count out-link-neighbors + count in-link-neighbors)) * 100 >= criterion [
-       ifelse persisted < refractory [
-         set necessary false
-         set persisted persisted + 1
-       ] [
-         set color red
-         set infected true
-       ]
-     ][
-       set necessary false
-       set persisted 0
-     ]
-   ]
-   ask turtles with [any? out-link-neighbors = false] [
-    revert-edges turtle who
+  ask turtles with [not infected and lambda = 0] [
+    if any? out-link-neighbors with [infected] or any? in-link-neighbors with [infected][
+      ifelse ((count out-link-neighbors with [infected] + count in-link-neighbors with [infected]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > criterion [
+        ifelse persisted < refractory [
+          set necessary false
+          set persisted persisted + 1
+        ] [
+          set infected true
+          set persisted 0
+          set agents false
+          set color red
+          set necessary true
+        ]
+      ] [
+        set necessary false
+        set persisted 0
+      ]
+    ]
   ]
 end
 
+to clean
 
-;to clean
-;  ask turtles with [not infected] [
-;    ifelse ((count out-link-neighbors with [infected] + count in-link-neighbors with [infected]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > criterion [
-;      ifelse persisted < refractory [
-;        set necessary false
-;        set persisted persisted + 1
-;      ] [
-;        ifelse recontamination [
-;          ifelse any? out-link-neighbors with [agents] or any? in-link-neighbors with [agents] or agents [
-;            send-agent-to turtle who
-;          ] [
-;            set color red
-;            set infected true
-;          ]
-;        ] [
-;          send-agent-to turtle who
-;        ]
-;      ]
-;    ] [
-;      set necessary false
-;      set persisted 0
-;    ]
-;  ]
-;end
+  ask turtles with [agents and not necessary] [
+    set agents false
+    set color green
+  ]
 
-;to send-agents
-;  ask turtles with [agents and not necessary] [
-;    set agents false
-;    set color green
-;  ]
-;  ask turtles with [any? out-link-neighbors = false] [
-;    revert-edges turtle who
-;  ]
-;  ask turtles with [
-;    any? out-link-neighbors = false
-;  ] [
-;    send-agent-to turtle who
-;  ]
-;  if count turtles with [agents] > max-agents
-;    [set max-agents count turtles with [agents]]
-;end
+  ask turtles with [any? out-link-neighbors = false] [
+    revert-edges turtle who
+  ]
 
-;to send-agent-to [animal]
-;  ask animal [
-;    set infected false
-;    set persisted 0
-;    set agents true
-;    set color yellow
-;    set necessary true
-;  ]
-;end
+  ask turtles [ask out-link-neighbors with[agents]
+    [
+      if (infected and shape != "bug")[
+        send-agent-to-clean turtle who
+      ]
+    ]
+  ]
 
+  if count turtles with [agents] > max-agents
+    [set max-agents count turtles with [agents]]
+end
+
+to send-agents
+  ask turtles with [shape = "wolf"] [
+      send-agent-to-clean turtle who
+    ]
+end
+
+to send-agent-to-clean [animal]
+  ask animal [
+    set infected false
+    set persisted 0
+    set agents true
+    set color blue
+    set necessary true
+  ]
+end
 
 to revert-edges [animal]
   ask animal [
@@ -248,7 +248,7 @@ BUTTON
 43
 go
 go
-NIL
+T
 1
 T
 OBSERVER
@@ -267,7 +267,7 @@ criterion
 criterion
 0
 100
-10.0
+20.0
 1
 1
 NIL
@@ -287,6 +287,40 @@ refractory
 1
 NIL
 HORIZONTAL
+
+BUTTON
+150
+11
+254
+44
+send agent
+send-agents
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+166
+59
+229
+92
+step
+step
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -490,6 +524,17 @@ line half
 true
 0
 Line -7500403 true 150 0 150 150
+
+mouse
+false
+0
+Polygon -7500403 true true 38 162 24 165 19 174 22 192 47 213 90 225 135 230 161 240 178 262 150 246 117 238 73 232 36 220 11 196 7 171 15 153 37 146 46 145
+Polygon -7500403 true true 289 142 271 165 237 164 217 185 235 192 254 192 259 199 245 200 248 203 226 199 200 194 155 195 122 185 84 187 91 195 82 192 83 201 72 190 67 199 62 185 46 183 36 165 40 134 57 115 74 106 60 109 90 97 112 94 92 93 130 86 154 88 134 81 183 90 197 94 183 86 212 95 211 88 224 83 235 88 248 97 246 90 257 107 255 97 270 120
+Polygon -16777216 true false 234 100 220 96 210 100 214 111 228 116 239 115
+Circle -16777216 true false 246 117 20
+Line -7500403 true 270 153 282 174
+Line -7500403 true 272 153 255 173
+Line -7500403 true 269 156 268 177
 
 pentagon
 false

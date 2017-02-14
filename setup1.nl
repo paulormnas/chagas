@@ -10,3 +10,6 @@ green
 "bug"
 red
 -2 3
+"mouse"
+green
+-10 -5

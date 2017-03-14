@@ -1,224 +1,111 @@
-turtles-own [agents lambda infected persisted necessary]
+turtles-own [animal]
+patches-own [terrain]
 globals [max-agents]
 
 to setup
-  clear-all                                               ;; Clear all turtles and patches instanciated
-  import-drawing "envoironment.png"                       ;; Loads an image as a background from the current directory the model was launched from
-  import-pcolors "envoironment.png"                       ;; Import colors of the backgraound image to the patches
-  setup-elements                                          ;; Setup the board with background and some turtles as the local and the animals to study
-  calculate-lambda
-  set max-agents count turtles with [agents]
-  reset-ticks
-end
+  clear-all
+  import-pcolors "terrain32bit.png"
+  import-drawing "terrain.png"
+  setup_terrain
 
-to setup-elements
-  file-open file                                          ;; Read the file with specifications of the animals to be loaded for the simulation
-  create-turtles 5 [                                      ;; Instatiate the turtles with different animal's features
-    set shape file-read
-    set color file-read
-    setxy file-read file-read
-    set size 2]
-  file-close
-
-  link-bugs                                               ;; Procedure to create directed links from bugs to other animals
-  link-wolves                                             ;; Create link from squirrel to wolf
-
-  ask turtles with [shape = "bug"] [
-    set agents false
-    set infected true
-    set necessary true
-  ]
-
-  ask turtles with [shape != "bug"] [
-    set agents false
-    set infected false
-    set necessary false
-  ]
-;  ask turtles with [
-;    any? out-link-neighbors = false
-;  ] [
-;    send-agent-to turtle who
-;  ]
 
 end
 
-to link-bugs
-  let bugs [who] of turtles with [shape = "bug"]          ;; List with the who values of bug turtles
-  let notBugs [who] of turtles with [shape != "bug"]      ;; List with the who values of not bug turtles
-  let bugsCount length bugs
-  let notBugsCount length notBugs
-  while [bugsCount > 0][
-    let index1 bugsCount - 1                              ;; Variable with the index of the list of bugs
-    while [notBugsCount > 0][
-      let index2 notBugsCount - 1                         ;; Variable with the index of the list of not bugs
-      ask turtle item index1 bugs [
-        create-link-to turtle item index2 notBugs         ;; Create links from bugs to others animals
-      ]
-      set notBugsCount notBugsCount - 1
-    ]
-    set bugsCount bugsCount - 1
+to setup_terrain
+  ask patches with [(pcolor >= 27 and pcolor <= 39.9) or
+    (pcolor >= 45.5 and pcolor <= 49.9) ][
+    set terrain "urban"
+  ]
+
+  ask patches with [(pcolor >= 77.1 and pcolor <= 79.9) or
+    (pcolor >= 81 and pcolor <= 89.9) or
+    (pcolor >= 91 and pcolor <= 99.9)][
+    set terrain "water"
+  ]
+
+  ask patches with [(pcolor >= 41 and pcolor <= 45.5) or
+    (pcolor >= 51 and pcolor <= 59.9) or
+    (pcolor >= 61 and pcolor <= 69.9) or
+    (pcolor >= 71 and pcolor <= 77)][
+    set terrain "forest"
   ]
 end
 
-to link-wolves
-  let wolves [who] of turtles with [shape = "wolf"]       ;; List with the who values of wolves turtles
-  let wolvesPrey [who] of turtles with [
-    shape = "squirrel" or shape = "mouse"]                ;; List with the who values of wolf's prey turtles
-  let wolvesCount length wolves
-  let preyCount length wolvesPrey
-  while [preyCount > 0][
-    let index1 preyCount - 1                              ;; Variable with the index of the list of wolves
-    while [wolvesCount > 0][
-      let index2 wolvesCount - 1                          ;; Variable with the index of the list of wolf's prey
-      ask turtle item index1 wolvesPrey [
-        create-link-to turtle item index2 wolves          ;; Create links from wolves to their prey
-      ]
-      set wolvesCount wolvesCount - 1
-    ]
-    set preyCount preyCount - 1
-    set wolvesCount length wolves
-  ]
-end
-
-to go
-  step
-end
-
-to step
-  move-turtles
-  infect
-  clean
-
-  calculate-lambda
-  tick
-end
-
-to move-turtles
-  ask turtles [
-    right random 360
-    forward 1
-  ]
-end
-
-to infect
-  ask turtles with [not infected and lambda = 0] [
-    if any? out-link-neighbors with [infected] or any? in-link-neighbors with [infected][
-      ifelse ((count out-link-neighbors with [infected] + count in-link-neighbors with [infected]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > criterion [
-        ifelse persisted < refractory [
-          set necessary false
-          set persisted persisted + 1
-        ] [
-          set infected true
-          set persisted 0
-          set agents false
-          set color red
-          set necessary true
+to set_human
+  let x 0
+  let y 0
+  while[x <= 32][
+    while[y <= 32][
+      if([terrain] of patch x y = "urban")[
+        create-turtles 1 [
+          set color green
+          set animal "human"
+          set shape "person"
+          setxy x y
         ]
-      ] [
-        set necessary false
-        set persisted 0
       ]
+      set y y + 1
     ]
+    set x x + 1
+    set y 0
   ]
+
 end
 
-to clean
-
-  ask turtles with [agents and not necessary] [
-    set agents false
-    set color green
-  ]
-
-  ask turtles with [any? out-link-neighbors = false] [
-    revert-edges turtle who
-  ]
-
-ask turtles with [agents] [
-  ask out-link-neighbors with[infected and shape != "bug"][
-    send-agent-to-clean turtle who]
-]
-
-  if count turtles with [agents] > max-agents
-    [set max-agents count turtles with [agents]]
-end
-
-to put-agents-on-map
-  ask turtles with [shape = "wolf"] [
-      send-agent-to-clean turtle who
+to set_bug
+  let x 0
+  let y 0
+  while[x <= 32][
+    while[y <= 32][
+      if(([terrain] of patch x y = "urban") or ([terrain] of patch x y = "forest"))[
+        create-turtles 1 [
+          set color red
+          set animal "bug"
+          set shape "bug"
+          setxy x y
+        ]
+      ]
+      set y y + 1
     ]
-end
-
-to send-agent-to-clean [animal]
-  ask animal [
-    set infected false
-    set persisted 0
-    set agents true
-    set color blue
-    set necessary true
+    set x x + 1
+    set y 0
   ]
-end
 
-to revert-edges [animal]
-  ask animal [
-    ask in-link-neighbors [
-      create-link-from animal
-      ask out-link-to animal [die]
-    ]
-  ]
-end
-
-to calculate-lambda
-  ask turtles [set lambda -1]
-  ask turtles with [any? out-link-neighbors = false] [
-    set lambda 0
-    continue-lambda in-link-neighbors
-  ]
-end
-
-to continue-lambda [animals]
-  ask animals with [lambda = -1] [
-    if any? out-link-neighbors with [lambda = -1] = false [
-      let l 0
-      ask max-one-of out-link-neighbors [lambda] [set l lambda]
-      set lambda l + 1
-      if count in-link-neighbors > 0 [continue-lambda in-link-neighbors]
-    ]
-  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-256
-15
-924
-484
+210
+10
+647
+448
 -1
 -1
-20.0
+13.0
 1
 16
 1
 1
 1
 0
-0
-0
 1
--16
-16
--11
-11
+1
+1
 0
+32
 0
+32
+1
+1
 1
 ticks
 30.0
 
 BUTTON
-5
+9
 10
-72
+76
 43
-NIL
+setup
 setup
 NIL
 1
@@ -230,70 +117,13 @@ NIL
 NIL
 1
 
-CHOOSER
-5
-57
-143
-102
-file
-file
-"setup1.nl" "setup2.nl"
-0
-
 BUTTON
-80
+83
 10
-143
+201
 43
-go
-go
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-SLIDER
-4
-125
-176
-158
-criterion
-criterion
-0
-100
-20.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-5
-164
-177
-197
-refractory
-refractory
-0
-10
-1.0
-1
-1
-NIL
-HORIZONTAL
-
-BUTTON
-150
-11
-254
-44
-send agent
-put-agents-on-map
+set-human
+set_human
 NIL
 1
 T
@@ -305,12 +135,12 @@ NIL
 1
 
 BUTTON
-166
-59
-229
-92
-step
-step
+99
+52
+180
+85
+set-bug
+set_bug
 NIL
 1
 T
@@ -524,17 +354,6 @@ true
 0
 Line -7500403 true 150 0 150 150
 
-mouse
-false
-0
-Polygon -7500403 true true 38 162 24 165 19 174 22 192 47 213 90 225 135 230 161 240 178 262 150 246 117 238 73 232 36 220 11 196 7 171 15 153 37 146 46 145
-Polygon -7500403 true true 289 142 271 165 237 164 217 185 235 192 254 192 259 199 245 200 248 203 226 199 200 194 155 195 122 185 84 187 91 195 82 192 83 201 72 190 67 199 62 185 46 183 36 165 40 134 57 115 74 106 60 109 90 97 112 94 92 93 130 86 154 88 134 81 183 90 197 94 183 86 212 95 211 88 224 83 235 88 248 97 246 90 257 107 255 97 270 120
-Polygon -16777216 true false 234 100 220 96 210 100 214 111 228 116 239 115
-Circle -16777216 true false 246 117 20
-Line -7500403 true 270 153 282 174
-Line -7500403 true 272 153 255 173
-Line -7500403 true 269 156 268 177
-
 pentagon
 false
 0
@@ -587,22 +406,6 @@ false
 0
 Rectangle -7500403 true true 30 30 270 270
 Rectangle -16777216 true false 60 60 240 240
-
-squirrel
-false
-0
-Polygon -7500403 true true 87 267 106 290 145 292 157 288 175 292 209 292 207 281 190 276 174 277 156 271 154 261 157 245 151 230 156 221 171 209 214 165 231 171 239 171 263 154 281 137 294 136 297 126 295 119 279 117 241 145 242 128 262 132 282 124 288 108 269 88 247 73 226 72 213 76 208 88 190 112 151 107 119 117 84 139 61 175 57 210 65 231 79 253 65 243 46 187 49 157 82 109 115 93 146 83 202 49 231 13 181 12 142 6 95 30 50 39 12 96 0 162 23 250 68 275
-Polygon -16777216 true false 237 85 249 84 255 92 246 95
-Line -16777216 false 221 82 213 93
-Line -16777216 false 253 119 266 124
-Line -16777216 false 278 110 278 116
-Line -16777216 false 149 229 135 211
-Line -16777216 false 134 211 115 207
-Line -16777216 false 117 207 106 211
-Line -16777216 false 91 268 131 290
-Line -16777216 false 220 82 213 79
-Line -16777216 false 286 126 294 128
-Line -16777216 false 193 284 206 285
 
 star
 false

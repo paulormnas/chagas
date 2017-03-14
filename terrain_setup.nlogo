@@ -4,9 +4,10 @@ globals [max-agents]
 
 to setup
   clear-all
-  import-pcolors "terrain32bit.png"
-  import-drawing "terrain.png"
+  import-pcolors "terrain16bit.png"
+  ;import-drawing "terrain.png"
   setup_terrain
+
 
 
 end
@@ -34,8 +35,8 @@ end
 to set_human
   let x 0
   let y 0
-  while[x <= 32][
-    while[y <= 32][
+  while[x <= max-pxcor][
+    while[y <= max-pycor][
       if([terrain] of patch x y = "urban")[
         create-turtles 1 [
           set color green
@@ -50,13 +51,29 @@ to set_human
     set y 0
   ]
 
+  ask turtles with [animal = "human"][
+    let neighborsWho [who] of turtles-on neighbors
+    show neighborsWho
+    let whileCount 0
+    while[whileCount <= length neighborsWho - 1][
+      let whoNumber item whileCount neighborsWho
+      if(([animal] of turtle whoNumber = "human") and
+        (not in-link-neighbor? turtle whoNumber))[
+        create-link-to turtle item whileCount neighborsWho
+      ]
+      set whileCount whileCount + 1
+    ]
+  ]
+
+
+
 end
 
 to set_bug
   let x 0
   let y 0
-  while[x <= 32][
-    while[y <= 32][
+  while[x <= max-pxcor][
+    while[y <= max-pycor][
       if(([terrain] of patch x y = "urban") or ([terrain] of patch x y = "forest"))[
         create-turtles 1 [
           set color red
@@ -71,13 +88,28 @@ to set_bug
     set y 0
   ]
 
+  ask turtles with [animal = "bug"][
+    let neighborsWho [who] of turtles-on neighbors
+    show neighborsWho
+    let whileCount 0
+    while[whileCount <= length neighborsWho - 1][
+      let whoNumber item whileCount neighborsWho
+      if(([animal] of turtle whoNumber = "bug") and
+        (not in-link-neighbor? turtle whoNumber))[
+        create-link-to turtle item whileCount neighborsWho
+      ]
+      set whileCount whileCount + 1
+    ]
+  ]
+
 end
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-647
-448
+335
+136
 -1
 -1
 13.0
@@ -87,13 +119,13 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 0
-32
+8
 0
-32
+8
 1
 1
 1
@@ -145,6 +177,40 @@ NIL
 1
 T
 OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+8
+126
+101
+159
+hide links
+hide-link
+NIL
+1
+T
+LINK
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+7
+164
+107
+197
+show links
+show-link
+NIL
+1
+T
+LINK
 NIL
 NIL
 NIL

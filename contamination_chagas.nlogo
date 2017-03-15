@@ -1,106 +1,217 @@
-turtles-own [agents lambda infected persisted necessary]
+turtles-own [agents lambda infected persisted necessary animal]
+patches-own [terrain]
 globals [max-agents]
 
 to setup
   clear-all                                               ;; Clear all turtles and patches instanciated
-  import-drawing "envoironment.png"                       ;; Loads an image as a background from the current directory the model was launched from
-  import-pcolors "envoironment.png"                       ;; Import colors of the backgraound image to the patches
-  setup-elements                                          ;; Setup the board with background and some turtles as the local and the animals to study
+  import-pcolors "terrain16bit.png"                       ;; Loads an image as a background from the current directory the model was launched from
+  ;import-drawing "terrain.png"                            ;; Import colors of the backgraound image to the patches
+  ;setup-elements                                          ;; Setup the board with background and some turtles as the local and the animals to study
+  setup_terrain
+
   calculate-lambda
   set max-agents count turtles with [agents]
   reset-ticks
 end
 
-to setup-elements
-  file-open file                                          ;; Read the file with specifications of the animals to be loaded for the simulation
-  create-turtles 5 [                                      ;; Instatiate the turtles with different animal's features
-    set shape file-read
-    set color file-read
-    setxy file-read file-read
-    set size 2]
-  file-close
+to setup_terrain
+  ask patches with [(pcolor >= 27 and pcolor <= 39.9) or
+    (pcolor >= 45.5 and pcolor <= 49.9) ][
+    set terrain "urban"
+  ]
 
-  link-bugs                                               ;; Procedure to create directed links from bugs to other animals
-  link-wolves                                             ;; Create link from squirrel to wolf
+  ask patches with [(pcolor >= 77.1 and pcolor <= 79.9) or
+    (pcolor >= 81 and pcolor <= 89.9) or
+    (pcolor >= 91 and pcolor <= 99.9)][
+    set terrain "water"
+  ]
 
-  ask turtles with [shape = "bug"] [
+  ask patches with [(pcolor >= 41 and pcolor <= 45.5) or
+    (pcolor >= 51 and pcolor <= 59.9) or
+    (pcolor >= 61 and pcolor <= 69.9) or
+    (pcolor >= 71 and pcolor <= 77)][
+    set terrain "forest"
+  ]
+end
+
+to set_human
+  ifelse any? turtles with [animal = "human"]
+  []
+  [
+    let x 0
+    let y 0
+    while[x <= max-pxcor][
+      while[y <= max-pycor][
+        if([terrain] of patch x y = "urban")[
+          create-turtles 1 [
+            set color green
+            set animal "human"
+            set shape "person"
+            setxy x y
+            set agents false
+            set infected false
+            set necessary false
+          ]
+        ]
+        set y y + 1
+      ]
+      set x x + 1
+      set y 0
+    ]
+
+    ask turtles with [animal = "human"][
+      let neighborsWho [who] of turtles-on neighbors
+      show neighborsWho
+      let whileCount 0
+      while[whileCount <= length neighborsWho - 1][
+        let whoNumber item whileCount neighborsWho
+        if(([animal] of turtle whoNumber = "human") and
+          (not in-link-neighbor? turtle whoNumber))[
+          create-link-to turtle whoNumber
+          ]
+        set whileCount whileCount + 1
+      ]
+    ]
+  ]
+
+
+
+end
+
+to set_bug
+  ifelse any? turtles with [animal = "bug"]
+  []
+  [
+    let x 0
+    let y 0
+    while[x <= max-pxcor][
+      while[y <= max-pycor][
+        if(([terrain] of patch x y = "urban") or ([terrain] of patch x y = "forest"))[
+          create-turtles 1 [
+            set color red
+            set animal "bug"
+            set shape "bug"
+            setxy x y
+            set agents false
+            set infected false
+            set necessary false
+          ]
+        ]
+        set y y + 1
+      ]
+      set x x + 1
+      set y 0
+    ]
+
+    ask turtles with [animal = "bug"][
+      let neighborsWho [who] of turtles-on neighbors
+      show neighborsWho
+      let whileCount 0
+      while[whileCount <= length neighborsWho - 1][
+        let whoNumber item whileCount neighborsWho
+        if(([animal] of turtle whoNumber = "bug") and
+          (not in-link-neighbor? turtle whoNumber))[
+          create-link-to turtle whoNumber
+          ]
+        set whileCount whileCount + 1
+      ]
+    ]
+  ]
+
+end
+
+to infect
+  let maxHumanTurtles count turtles with [animal = "human"]
+  ask turtle random (maxHumanTurtles - 1) [
     set agents false
     set infected true
     set necessary true
+    set color red
   ]
+end
 
-  ask turtles with [shape != "bug"] [
-    set agents false
-    set infected false
-    set necessary false
-  ]
-;  ask turtles with [
-;    any? out-link-neighbors = false
-;  ] [
-;    send-agent-to turtle who
+;to setup-elements
+;  file-open file                                          ;; Read the file with specifications of the animals to be loaded for the simulation
+;  create-turtles 5 [                                      ;; Instatiate the turtles with different animal's features
+;    set shape file-read
+;    set color file-read
+;    setxy file-read file-read
+;    set size 2]
+;  file-close
+;
+;  link-bugs                                               ;; Procedure to create directed links from bugs to other animals
+;  link-wolves                                             ;; Create link from squirrel to wolf
+;
+;  ask turtles with [shape = "bug"] [
+;    set agents false
+;    set infected true
+;    set necessary true
 ;  ]
-
-end
-
-to link-bugs
-  let bugs [who] of turtles with [shape = "bug"]          ;; List with the who values of bug turtles
-  let notBugs [who] of turtles with [shape != "bug"]      ;; List with the who values of not bug turtles
-  let bugsCount length bugs
-  let notBugsCount length notBugs
-  while [bugsCount > 0][
-    let index1 bugsCount - 1                              ;; Variable with the index of the list of bugs
-    while [notBugsCount > 0][
-      let index2 notBugsCount - 1                         ;; Variable with the index of the list of not bugs
-      ask turtle item index1 bugs [
-        create-link-to turtle item index2 notBugs         ;; Create links from bugs to others animals
-      ]
-      set notBugsCount notBugsCount - 1
-    ]
-    set bugsCount bugsCount - 1
-  ]
-end
-
-to link-wolves
-  let wolves [who] of turtles with [shape = "wolf"]       ;; List with the who values of wolves turtles
-  let wolvesPrey [who] of turtles with [
-    shape = "squirrel" or shape = "mouse"]                ;; List with the who values of wolf's prey turtles
-  let wolvesCount length wolves
-  let preyCount length wolvesPrey
-  while [preyCount > 0][
-    let index1 preyCount - 1                              ;; Variable with the index of the list of wolves
-    while [wolvesCount > 0][
-      let index2 wolvesCount - 1                          ;; Variable with the index of the list of wolf's prey
-      ask turtle item index1 wolvesPrey [
-        create-link-to turtle item index2 wolves          ;; Create links from wolves to their prey
-      ]
-      set wolvesCount wolvesCount - 1
-    ]
-    set preyCount preyCount - 1
-    set wolvesCount length wolves
-  ]
-end
+;
+;  ask turtles with [shape != "bug"] [
+;    set agents false
+;    set infected false
+;    set necessary false
+;  ]
+;;  ask turtles with [
+;;    any? out-link-neighbors = false
+;;  ] [
+;;    send-agent-to turtle who
+;;  ]
+;
+;end
+;
+;to link-bugs
+;  let bugs [who] of turtles with [shape = "bug"]          ;; List with the who values of bug turtles
+;  let notBugs [who] of turtles with [shape != "bug"]      ;; List with the who values of not bug turtles
+;  let bugsCount length bugs
+;  let notBugsCount length notBugs
+;  while [bugsCount > 0][
+;    let index1 bugsCount - 1                              ;; Variable with the index of the list of bugs
+;    while [notBugsCount > 0][
+;      let index2 notBugsCount - 1                         ;; Variable with the index of the list of not bugs
+;      ask turtle item index1 bugs [
+;        create-link-to turtle item index2 notBugs         ;; Create links from bugs to others animals
+;      ]
+;      set notBugsCount notBugsCount - 1
+;    ]
+;    set bugsCount bugsCount - 1
+;  ]
+;end
+;
+;to link-wolves
+;  let wolves [who] of turtles with [shape = "wolf"]       ;; List with the who values of wolves turtles
+;  let wolvesPrey [who] of turtles with [
+;    shape = "squirrel" or shape = "mouse"]                ;; List with the who values of wolf's prey turtles
+;  let wolvesCount length wolves
+;  let preyCount length wolvesPrey
+;  while [preyCount > 0][
+;    let index1 preyCount - 1                              ;; Variable with the index of the list of wolves
+;    while [wolvesCount > 0][
+;      let index2 wolvesCount - 1                          ;; Variable with the index of the list of wolf's prey
+;      ask turtle item index1 wolvesPrey [
+;        create-link-to turtle item index2 wolves          ;; Create links from wolves to their prey
+;      ]
+;      set wolvesCount wolvesCount - 1
+;    ]
+;    set preyCount preyCount - 1
+;    set wolvesCount length wolves
+;  ]
+;end
 
 to go
   step
 end
 
 to step
-  move-turtles
-  infect
+  spread
   clean
 
   calculate-lambda
   tick
 end
 
-to move-turtles
-  ask turtles [
-    right random 360
-    forward 1
-  ]
-end
-
-to infect
+to spread
   ask turtles with [not infected and lambda = 0] [
     if any? out-link-neighbors with [infected] or any? in-link-neighbors with [infected][
       ifelse ((count out-link-neighbors with [infected] + count in-link-neighbors with [infected]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > criterion [
@@ -142,14 +253,14 @@ ask turtles with [agents] [
     [set max-agents count turtles with [agents]]
 end
 
-to put-agents-on-map
-  ask turtles with [shape = "wolf"] [
-      send-agent-to-clean turtle who
-    ]
-end
+;to put-agents-on-map
+;  ask turtles with [shape = "wolf"] [
+;      send-agent-to-clean turtle who
+;    ]
+;end
 
-to send-agent-to-clean [animal]
-  ask animal [
+to send-agent-to-clean [animalWho]
+  ask animalWho [
     set infected false
     set persisted 0
     set agents true
@@ -158,11 +269,11 @@ to send-agent-to-clean [animal]
   ]
 end
 
-to revert-edges [animal]
-  ask animal [
+to revert-edges [animalWho]
+  ask animalWho [
     ask in-link-neighbors [
-      create-link-from animal
-      ask out-link-to animal [die]
+      create-link-from animalWho
+      ask out-link-to animalWho [die]
     ]
   ]
 end
@@ -175,8 +286,8 @@ to calculate-lambda
   ]
 end
 
-to continue-lambda [animals]
-  ask animals with [lambda = -1] [
+to continue-lambda [animalsWho]
+  ask animalsWho with [lambda = -1] [
     if any? out-link-neighbors with [lambda = -1] = false [
       let l 0
       ask max-one-of out-link-neighbors [lambda] [set l lambda]
@@ -189,11 +300,11 @@ end
 GRAPHICS-WINDOW
 256
 15
-924
-484
+1920
+1680
 -1
 -1
-20.0
+184.0
 1
 16
 1
@@ -203,10 +314,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--16
-16
--11
-11
+0
+8
+0
+8
 0
 0
 1
@@ -266,7 +377,7 @@ criterion
 criterion
 0
 100
-20.0
+10.0
 1
 1
 NIL
@@ -281,19 +392,19 @@ refractory
 refractory
 0
 10
-1.0
+0.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-150
-11
-254
-44
-send agent
-put-agents-on-map
+152
+10
+215
+43
+step
+step
 NIL
 1
 T
@@ -305,12 +416,80 @@ NIL
 1
 
 BUTTON
-166
-59
-229
-92
-step
-step
+4
+323
+97
+356
+hide links
+hide-link
+NIL
+1
+T
+LINK
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+4
+364
+104
+397
+show links
+show-link
+NIL
+1
+T
+LINK
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+3
+239
+105
+272
+set-human
+set_human
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+4
+282
+85
+315
+set-bug
+set_bug
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+5
+406
+72
+439
+NIL
+infect
 NIL
 1
 T
@@ -704,8 +883,8 @@ default
 link direction
 true
 0
-Line -7500403 true 150 150 90 180
-Line -7500403 true 150 150 210 180
+Line -7500403 true 150 150 135 165
+Line -7500403 true 150 150 165 165
 @#$#@#$#@
 0
 @#$#@#$#@

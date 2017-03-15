@@ -2,6 +2,7 @@ turtles-own [animal]
 patches-own [terrain]
 globals [max-agents]
 
+
 to setup
   clear-all
   import-pcolors "terrain16bit.png"
@@ -33,35 +34,39 @@ to setup_terrain
 end
 
 to set_human
-  let x 0
-  let y 0
-  while[x <= max-pxcor][
-    while[y <= max-pycor][
-      if([terrain] of patch x y = "urban")[
-        create-turtles 1 [
-          set color green
-          set animal "human"
-          set shape "person"
-          setxy x y
+  ifelse any? turtles with [animal = "human"]
+  []
+  [
+    let x 0
+    let y 0
+    while[x <= max-pxcor][
+      while[y <= max-pycor][
+        if([terrain] of patch x y = "urban")[
+          create-turtles 1 [
+            set color green
+            set animal "human"
+            set shape "person"
+            setxy x y
+          ]
         ]
+        set y y + 1
       ]
-      set y y + 1
+      set x x + 1
+      set y 0
     ]
-    set x x + 1
-    set y 0
-  ]
 
-  ask turtles with [animal = "human"][
-    let neighborsWho [who] of turtles-on neighbors
-    show neighborsWho
-    let whileCount 0
-    while[whileCount <= length neighborsWho - 1][
-      let whoNumber item whileCount neighborsWho
-      if(([animal] of turtle whoNumber = "human") and
-        (not in-link-neighbor? turtle whoNumber))[
-        create-link-to turtle item whileCount neighborsWho
+    ask turtles with [animal = "human"][
+      let neighborsWho [who] of turtles-on neighbors
+      show neighborsWho
+      let whileCount 0
+      while[whileCount <= length neighborsWho - 1][
+        let whoNumber item whileCount neighborsWho
+        if(([animal] of turtle whoNumber = "human") and
+          (not in-link-neighbor? turtle whoNumber))[
+          create-link-to turtle item whileCount neighborsWho
+          ]
+        set whileCount whileCount + 1
       ]
-      set whileCount whileCount + 1
     ]
   ]
 
@@ -70,40 +75,43 @@ to set_human
 end
 
 to set_bug
-  let x 0
-  let y 0
-  while[x <= max-pxcor][
-    while[y <= max-pycor][
-      if(([terrain] of patch x y = "urban") or ([terrain] of patch x y = "forest"))[
-        create-turtles 1 [
-          set color red
-          set animal "bug"
-          set shape "bug"
-          setxy x y
+  ifelse any? turtles with [animal = "bug"]
+  []
+  [
+    let x 0
+    let y 0
+    while[x <= max-pxcor][
+      while[y <= max-pycor][
+        if(([terrain] of patch x y = "urban") or ([terrain] of patch x y = "forest"))[
+          create-turtles 1 [
+            set color red
+            set animal "bug"
+            set shape "bug"
+            setxy x y
+          ]
         ]
+        set y y + 1
       ]
-      set y y + 1
+      set x x + 1
+      set y 0
     ]
-    set x x + 1
-    set y 0
-  ]
 
-  ask turtles with [animal = "bug"][
-    let neighborsWho [who] of turtles-on neighbors
-    show neighborsWho
-    let whileCount 0
-    while[whileCount <= length neighborsWho - 1][
-      let whoNumber item whileCount neighborsWho
-      if(([animal] of turtle whoNumber = "bug") and
-        (not in-link-neighbor? turtle whoNumber))[
-        create-link-to turtle item whileCount neighborsWho
+    ask turtles with [animal = "bug"][
+      let neighborsWho [who] of turtles-on neighbors
+      show neighborsWho
+      let whileCount 0
+      while[whileCount <= length neighborsWho - 1][
+        let whoNumber item whileCount neighborsWho
+        if(([animal] of turtle whoNumber = "bug") and
+          (not in-link-neighbor? turtle whoNumber))[
+          create-link-to turtle item whileCount neighborsWho
+          ]
+        set whileCount whileCount + 1
       ]
-      set whileCount whileCount + 1
     ]
   ]
 
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 210

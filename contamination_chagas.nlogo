@@ -5,7 +5,7 @@ globals [max-agents]
 to setup
   clear-all                                               ;; Clear all turtles and patches instanciated
   import-pcolors "terrain16bit.png"                       ;; Loads an image as a background from the current directory the model was launched from
-  ;import-drawing "terrain.png"                            ;; Import colors of the backgraound image to the patches
+  import-drawing "terrain.png"                            ;; Import colors of the backgraound image to the patches
   ;setup-elements                                          ;; Setup the board with background and some turtles as the local and the animals to study
   setup_terrain
 
@@ -14,7 +14,11 @@ to setup
   reset-ticks
 end
 
-to setup_terrain
+to setup_terrain                                          ;; Setup terrain properties accordingly to the background color
+  ask patches with [(pcolor >= 41 and pcolor <= 45.5) ][
+    set terrain "grass"
+  ]
+
   ask patches with [(pcolor >= 27 and pcolor <= 39.9) or
     (pcolor >= 45.5 and pcolor <= 49.9) ][
     set terrain "urban"
@@ -26,17 +30,16 @@ to setup_terrain
     set terrain "water"
   ]
 
-  ask patches with [(pcolor >= 41 and pcolor <= 45.5) or
-    (pcolor >= 51 and pcolor <= 59.9) or
+  ask patches with [(pcolor >= 51 and pcolor <= 59.9) or
     (pcolor >= 61 and pcolor <= 69.9) or
     (pcolor >= 71 and pcolor <= 77)][
     set terrain "forest"
   ]
 end
 
-to set_human
+to set_human                                               ;; Put humans on map, accordingly to the terrain allowed to then, and creat links to stablish a human graph
   ifelse any? turtles with [animal = "human"]
-  []
+  [show "Humans already set!"]
   [
     let x 0
     let y 0
@@ -78,9 +81,53 @@ to set_human
 
 end
 
-to set_bug
+to set_squirrel                                               ;; Put squirrel on map, accordingly to the terrain allowed to then, and creat links to stablish a squirrel graph
+  ifelse any? turtles with [animal = "squirrel"]
+  [show "Squirrel already set!"]
+  [
+    let x 0
+    let y 0
+    while[x <= max-pxcor][
+      while[y <= max-pycor][
+        if([terrain] of patch x y = "grass")[
+          create-turtles 1 [
+            set color green
+            set animal "squirrel"
+            set shape "squirrel"
+            setxy x y
+            set agents false
+            set infected false
+            set necessary false
+          ]
+        ]
+        set y y + 1
+      ]
+      set x x + 1
+      set y 0
+    ]
+
+    ask turtles with [animal = "squirrel"][
+      let neighborsWho [who] of turtles-on neighbors
+      show neighborsWho
+      let whileCount 0
+      while[whileCount <= length neighborsWho - 1][
+        let whoNumber item whileCount neighborsWho
+        if(([animal] of turtle whoNumber = "squirrel") and
+          (not in-link-neighbor? turtle whoNumber))[
+          create-link-to turtle whoNumber
+          ]
+        set whileCount whileCount + 1
+      ]
+    ]
+  ]
+
+
+
+end
+
+to set_bug                                                   ;; Put bugs on map, accordingly to the terrain allowed to then, and creat links connecting bugs to bugs and bugs to human, if they are on the map.
   ifelse any? turtles with [animal = "bug"]
-  []
+  [show "Bugs already set!"]
   [
     let x 0
     let y 0
@@ -88,7 +135,7 @@ to set_bug
       while[y <= max-pycor][
         if(([terrain] of patch x y = "urban") or ([terrain] of patch x y = "forest"))[
           create-turtles 1 [
-            set color red
+            set color yellow
             set animal "bug"
             set shape "bug"
             setxy x y
@@ -109,20 +156,38 @@ to set_bug
       let whileCount 0
       while[whileCount <= length neighborsWho - 1][
         let whoNumber item whileCount neighborsWho
-        if(([animal] of turtle whoNumber = "bug") and
+        if(([animal] of turtle whoNumber = "bug") or
+          ([animal] of turtle whoNumber = "human") and
           (not in-link-neighbor? turtle whoNumber))[
           create-link-to turtle whoNumber
           ]
         set whileCount whileCount + 1
       ]
     ]
+
+    ask turtles with [animal = "bug"][
+      let patchmatesWho [who] of turtles-here
+      show patchmatesWho
+      let whileCount 0
+      while [whileCount < length patchmatesWho - 1][
+        let whoNumber item whileCount patchmatesWho
+        if(([animal] of turtle whoNumber = "human") and
+          (not in-link-neighbor? turtle whoNumber))[
+          create-link-to turtle whoNumber
+          ]
+        set whileCount whileCount + 1
+      ]
+
+    ]
   ]
 
 end
 
-to infect
-  let maxHumanTurtles count turtles with [animal = "human"]
-  ask turtle random (maxHumanTurtles - 1) [
+to infect                                                        ;; Select a random bug to infect
+  let listWhoNumbers [who] of turtles with [shape = "bug"]
+  let maxBugTurtles length listWhoNumbers
+  let whoNumber item (random (maxBugTurtles - 1)) listWhoNumbers
+  ask turtle whoNumber [
     set agents false
     set infected true
     set necessary true
@@ -130,118 +195,72 @@ to infect
   ]
 end
 
-;to setup-elements
-;  file-open file                                          ;; Read the file with specifications of the animals to be loaded for the simulation
-;  create-turtles 5 [                                      ;; Instatiate the turtles with different animal's features
-;    set shape file-read
-;    set color file-read
-;    setxy file-read file-read
-;    set size 2]
-;  file-close
-;
-;  link-bugs                                               ;; Procedure to create directed links from bugs to other animals
-;  link-wolves                                             ;; Create link from squirrel to wolf
-;
-;  ask turtles with [shape = "bug"] [
-;    set agents false
-;    set infected true
-;    set necessary true
-;  ]
-;
-;  ask turtles with [shape != "bug"] [
-;    set agents false
-;    set infected false
-;    set necessary false
-;  ]
-;;  ask turtles with [
-;;    any? out-link-neighbors = false
-;;  ] [
-;;    send-agent-to turtle who
-;;  ]
-;
-;end
-;
-;to link-bugs
-;  let bugs [who] of turtles with [shape = "bug"]          ;; List with the who values of bug turtles
-;  let notBugs [who] of turtles with [shape != "bug"]      ;; List with the who values of not bug turtles
-;  let bugsCount length bugs
-;  let notBugsCount length notBugs
-;  while [bugsCount > 0][
-;    let index1 bugsCount - 1                              ;; Variable with the index of the list of bugs
-;    while [notBugsCount > 0][
-;      let index2 notBugsCount - 1                         ;; Variable with the index of the list of not bugs
-;      ask turtle item index1 bugs [
-;        create-link-to turtle item index2 notBugs         ;; Create links from bugs to others animals
-;      ]
-;      set notBugsCount notBugsCount - 1
-;    ]
-;    set bugsCount bugsCount - 1
-;  ]
-;end
-;
-;to link-wolves
-;  let wolves [who] of turtles with [shape = "wolf"]       ;; List with the who values of wolves turtles
-;  let wolvesPrey [who] of turtles with [
-;    shape = "squirrel" or shape = "mouse"]                ;; List with the who values of wolf's prey turtles
-;  let wolvesCount length wolves
-;  let preyCount length wolvesPrey
-;  while [preyCount > 0][
-;    let index1 preyCount - 1                              ;; Variable with the index of the list of wolves
-;    while [wolvesCount > 0][
-;      let index2 wolvesCount - 1                          ;; Variable with the index of the list of wolf's prey
-;      ask turtle item index1 wolvesPrey [
-;        create-link-to turtle item index2 wolves          ;; Create links from wolves to their prey
-;      ]
-;      set wolvesCount wolvesCount - 1
-;    ]
-;    set preyCount preyCount - 1
-;    set wolvesCount length wolves
-;  ]
-;end
-
 to go
   step
 end
 
-to step
-  spread
-  clean
+to step                                                          ;; Controls program's iterations
+  ask turtles with [any? out-link-neighbors = false] [
+    revert-edges turtle who
+  ]
 
+  clean
+  spread
   calculate-lambda
   tick
 end
 
-to spread
-  ask turtles with [not infected and lambda = 0] [
-    if any? out-link-neighbors with [infected] or any? in-link-neighbors with [infected][
-      ifelse ((count out-link-neighbors with [infected] + count in-link-neighbors with [infected]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > criterion [
-        ifelse persisted < refractory [
-          set necessary false
-          set persisted persisted + 1
+to spread                                                           ;; Spread contamination to out-neighbors after revert edges
+  ask turtles with [infected and any? in-link-neighbors = false][
+    ask out-link-neighbors[
+      if(not infected)[
+        ifelse ((count out-link-neighbors with [infected] + count in-link-neighbors with [infected]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > criterion [
+          ifelse persisted < refractory [
+            set necessary false
+            set persisted persisted + 1
+          ] [
+            set infected true
+            set persisted 0
+            set agents false
+            set color red
+            set necessary true
+          ]
         ] [
-          set infected true
+          set necessary false
           set persisted 0
-          set agents false
-          set color red
-          set necessary true
         ]
-      ] [
-        set necessary false
-        set persisted 0
       ]
     ]
   ]
 end
+
+;to spread
+;  ask turtles with [not infected] [
+;    if any? in-link-neighbors with [infected][
+;      ifelse ((count out-link-neighbors with [infected] + count in-link-neighbors with [infected]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > criterion [
+;        ifelse persisted < refractory [
+;          set necessary false
+;          set persisted persisted + 1
+;        ] [
+;          set infected true
+;          set persisted 0
+;          set agents false
+;          set color red
+;          set necessary true
+;        ]
+;      ] [
+;        set necessary false
+;        set persisted 0
+;      ]
+;    ]
+;  ]
+;end
 
 to clean
 
   ask turtles with [agents and not necessary] [
     set agents false
     set color green
-  ]
-
-  ask turtles with [any? out-link-neighbors = false] [
-    revert-edges turtle who
   ]
 
 ask turtles with [agents] [
@@ -300,11 +319,11 @@ end
 GRAPHICS-WINDOW
 256
 15
-1920
-1680
+951
+711
 -1
 -1
-184.0
+76.33333333333334
 1
 16
 1
@@ -369,25 +388,25 @@ NIL
 1
 
 SLIDER
-4
-125
-176
-158
+3
+116
+175
+149
 criterion
 criterion
 0
 100
-10.0
+0.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-5
-164
-177
-197
+4
+155
+176
+188
 refractory
 refractory
 0
@@ -490,6 +509,23 @@ BUTTON
 439
 NIL
 infect
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+2
+202
+108
+235
+set-squirrel
+set_squirrel
 NIL
 1
 T

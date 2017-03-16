@@ -5,8 +5,8 @@ globals [max-agents]
 
 to setup
   clear-all
-  import-pcolors "terrain16bit.png"
-  ;import-drawing "terrain.png"
+  import-pcolors "terrain32bit.png"
+  import-drawing "terrain.png"
   setup_terrain
 
 
@@ -63,7 +63,7 @@ to set_human
         let whoNumber item whileCount neighborsWho
         if(([animal] of turtle whoNumber = "human") and
           (not in-link-neighbor? turtle whoNumber))[
-          create-link-to turtle item whileCount neighborsWho
+          create-link-to turtle whoNumber
           ]
         set whileCount whileCount + 1
       ]
@@ -104,7 +104,7 @@ to set_bug
         let whoNumber item whileCount neighborsWho
         if(([animal] of turtle whoNumber = "bug") and
           (not in-link-neighbor? turtle whoNumber))[
-          create-link-to turtle item whileCount neighborsWho
+          create-link-to turtle whoNumber
           ]
         set whileCount whileCount + 1
       ]
@@ -116,8 +116,8 @@ end
 GRAPHICS-WINDOW
 210
 10
-335
-136
+647
+448
 -1
 -1
 13.0
@@ -131,9 +131,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-8
+32
 0
-8
+32
 1
 1
 1

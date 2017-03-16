@@ -133,7 +133,10 @@ to set_bug                                                   ;; Put bugs on map,
     let y 0
     while[x <= max-pxcor][
       while[y <= max-pycor][
-        if(([terrain] of patch x y = "urban") or ([terrain] of patch x y = "forest"))[
+        if(([terrain] of patch x y = "urban") or
+          ([terrain] of patch x y = "forest") or
+          ([terrain] of patch x y = "grass") and
+          (all? [turtles-at x y] of patch 0 0 [animal != "squirrel"]))[
           create-turtles 1 [
             set color yellow
             set animal "bug"
@@ -157,7 +160,8 @@ to set_bug                                                   ;; Put bugs on map,
       while[whileCount <= length neighborsWho - 1][
         let whoNumber item whileCount neighborsWho
         if(([animal] of turtle whoNumber = "bug") or
-          ([animal] of turtle whoNumber = "human") and
+          ([animal] of turtle whoNumber = "human") or
+         ([animal] of turtle whoNumber = "squirrel") and
           (not in-link-neighbor? turtle whoNumber))[
           create-link-to turtle whoNumber
           ]
@@ -396,7 +400,7 @@ criterion
 criterion
 0
 100
-0.0
+6.0
 1
 1
 NIL
@@ -411,7 +415,7 @@ refractory
 refractory
 0
 10
-0.0
+2.0
 1
 1
 NIL

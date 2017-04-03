@@ -75,8 +75,6 @@ to setup-animals
     set whileCount1 whileCount1 + 1
   ]
 
-
-
 end
 
 to create-animal [x y habitatsListItem animalData]
@@ -102,6 +100,18 @@ to create-links [animalToLink whoNumber]
     (not in-link-neighbor? turtle whoNumber))[
     create-link-to turtle whoNumber
     ]
+end
+
+to set-constraints
+  ask turtles with [ animal = animal-chooser ][
+    set aRefractory refractory
+    set aCriterion criterion
+  ]
+
+  output-print animal-chooser
+  output-print refractory
+  output-print criterion
+  output-print ""
 end
 
 
@@ -136,8 +146,8 @@ to spread                                                           ;; Spread co
   ask turtles with [infected and not any? in-link-neighbors][
     ask out-link-neighbors[
       if(not infected and not agent)[
-        ifelse ((count out-link-neighbors with [infected] + count in-link-neighbors with [infected]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > criterion [
-          ifelse persisted < refractory [
+        ifelse ((count out-link-neighbors with [infected] + count in-link-neighbors with [infected]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > aCriterion [
+          ifelse persisted < aRefractory [
             set necessary false
             set persisted persisted + 1
           ] [
@@ -193,8 +203,8 @@ to clean
   ask turtles with [agent and not any? in-link-neighbors] [
     ask out-link-neighbors [
       if(infected and not agent)[
-        ifelse ((count out-link-neighbors with [agent] + count in-link-neighbors with [agent]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > criterion [
-          ifelse persisted < refractory [
+        ifelse ((count out-link-neighbors with [agent] + count in-link-neighbors with [agent]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > aCriterion [
+          ifelse persisted < aRefractory [
             set necessary false
             set persisted persisted + 1
           ] [
@@ -350,7 +360,7 @@ criterion
 criterion
 0
 100
-8.0
+20.0
 1
 1
 NIL
@@ -365,7 +375,7 @@ refractory
 refractory
 0
 10
-1.0
+2.0
 1
 1
 NIL
@@ -475,7 +485,7 @@ CHOOSER
 animal-chooser
 animal-chooser
 "human" "bug" "squirrel"
-0
+2
 
 TEXTBOX
 8
@@ -501,8 +511,25 @@ OUTPUT
 982
 114
 1171
-321
+464
 16
+
+BUTTON
+160
+331
+223
+364
+set
+set-constraints
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?

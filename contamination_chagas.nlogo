@@ -1,4 +1,4 @@
-turtles-own [agents lambda infected persisted necessary animal aRefractory aCriterion habitat linkAnimals]
+turtles-own [agent lambda infected persisted necessary animal aRefractory aCriterion habitat linkAnimals]
 patches-own [terrain]
 globals [max-agents]
 
@@ -10,7 +10,7 @@ to setup
   setup-animals                                           ;; Setup the board with background and some turtles as the local and the animals to study
 
   calculate-lambda
-  set max-agents count turtles with [agents]
+  set max-agents count turtles with [agent]
   reset-ticks
 end
 
@@ -88,7 +88,7 @@ to create-animal [x y habitatsListItem animalData]
       set habitat item 3 animalData
       set linkAnimals item 4 animalData
       setxy x y
-      set agents false
+      set agent false
       set infected false
       set necessary false
       set aRefractory 0
@@ -110,7 +110,7 @@ to infect                                                        ;; Select a ran
   let maxBugTurtles length listWhoNumbers
   let whoNumber item (random (maxBugTurtles - 1)) listWhoNumbers
   ask turtle whoNumber [
-    set agents false
+    set agent false
     set infected true
     set necessary true
     set color red
@@ -133,9 +133,9 @@ to step                                                          ;; Controls pro
 end
 
 to spread                                                           ;; Spread contamination to out-neighbors after revert edges
-  ask turtles with [infected and any? in-link-neighbors = false][
+  ask turtles with [infected and not any? in-link-neighbors][
     ask out-link-neighbors[
-      if(not infected)[
+      if(not infected and not agent)[
         ifelse ((count out-link-neighbors with [infected] + count in-link-neighbors with [infected]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > criterion [
           ifelse persisted < refractory [
             set necessary false
@@ -143,7 +143,7 @@ to spread                                                           ;; Spread co
           ] [
             set infected true
             set persisted 0
-            set agents false
+            set agent false
             set color red
             set necessary true
           ]
@@ -166,7 +166,7 @@ end
 ;        ] [
 ;          set infected true
 ;          set persisted 0
-;          set agents false
+;          set agent false
 ;          set color red
 ;          set necessary true
 ;        ]
@@ -179,34 +179,66 @@ end
 ;end
 
 to clean
+;  ask turtles with [agent and necessary] [
+;     ifelse not any? link-neighbors with [infected][
+;       set agent false
+;       set necessary false
+;       set color green
+;     ][
+;       set agent false
+;       set color cyan
+;     ]
+;  ]
 
-  ask turtles with [agents and not necessary] [
-    set agents false
-    set color green
+  ask turtles with [agent and not any? in-link-neighbors] [
+    ask out-link-neighbors [
+      if(infected and not agent)[
+        ifelse ((count out-link-neighbors with [agent] + count in-link-neighbors with [agent]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > criterion [
+          ifelse persisted < refractory [
+            set necessary false
+            set persisted persisted + 1
+          ] [
+            set agent true
+            set infected false
+            set necessary true
+            set color blue
+          ]
+        ] [
+          set necessary false
+          set persisted 0
+        ]
+      ]
+
+    ]
   ]
 
-ask turtles with [agents] [
-  ask out-link-neighbors with[infected and shape != "bug"][
-    send-agent-to-clean turtle who]
-]
+  ask turtles with [not infected and agent and necessary] [
+    if not any? link-neighbors with [infected][
+      set agent false
+      set necessary false
 
-  if count turtles with [agents] > max-agents
-    [set max-agents count turtles with [agents]]
-end
-
-to put-agents-on-map
-  ask turtles with [shape = "wolf"] [
-      send-agent-to-clean turtle who
+      ifelse(animal = "bug")[
+        set color yellow
+      ][
+        set color green
+     ]
     ]
+  ]
+
+  if count turtles with [agent] > max-agents
+    [set max-agents count turtles with [agent]]
+
 end
 
-to send-agent-to-clean [animalWho]
-  ask animalWho [
+to set-agent
+  let listWhoNumbers [who] of turtles with [animal = "human"]
+  let maxHumanTurtles length listWhoNumbers
+  let whoNumber item (random (maxHumanTurtles - 1)) listWhoNumbers
+  ask turtle whoNumber [
+    set agent true
     set infected false
-    set persisted 0
-    set agents true
-    set color blue
     set necessary true
+    set color blue
   ]
 end
 
@@ -266,10 +298,10 @@ ticks
 30.0
 
 BUTTON
-5
-10
-72
-43
+6
+48
+73
+81
 NIL
 setup
 NIL
@@ -283,20 +315,20 @@ NIL
 1
 
 CHOOSER
-5
-57
-168
-102
+6
+91
+169
+136
 animals_file
 animals_file
 "config_animals.nl"
 0
 
 BUTTON
-80
-10
-143
-43
+81
+48
+144
+81
 go
 go
 T
@@ -311,39 +343,39 @@ NIL
 
 SLIDER
 3
-116
+376
 175
-149
+409
 criterion
 criterion
 0
 100
-6.0
+8.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-4
-155
-176
-188
+3
+415
+175
+448
 refractory
 refractory
 0
 10
-2.0
+1.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-152
-10
-215
-43
+153
+48
+216
+81
 step
 step
 NIL
@@ -357,10 +389,10 @@ NIL
 1
 
 BUTTON
-4
-323
-97
-356
+115
+191
+208
+224
 hide links
 hide-link
 NIL
@@ -374,10 +406,10 @@ NIL
 1
 
 BUTTON
-4
-364
-104
-397
+7
+191
+107
+224
 show links
 show-link
 NIL
@@ -391,10 +423,10 @@ NIL
 1
 
 BUTTON
-5
-406
-72
-439
+7
+149
+74
+182
 NIL
 infect
 NIL
@@ -406,6 +438,71 @@ NIL
 NIL
 NIL
 1
+
+BUTTON
+81
+149
+150
+182
+agent
+set-agent
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+MONITOR
+982
+35
+1088
+100
+max agents
+max-agents
+17
+1
+16
+
+CHOOSER
+4
+326
+142
+371
+animal-chooser
+animal-chooser
+"human" "bug" "squirrel"
+0
+
+TEXTBOX
+8
+258
+205
+318
+Select animals criterion of infection and refractory period
+16
+0.0
+1
+
+TEXTBOX
+7
+10
+208
+43
+Controls for model's iteractions and animals configuration file
+13
+0.0
+1
+
+OUTPUT
+982
+114
+1171
+321
+16
 
 @#$#@#$#@
 ## WHAT IS IT?

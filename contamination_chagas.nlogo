@@ -1,4 +1,4 @@
-turtles-own [agents lambda infected persisted necessary animal]
+turtles-own [agents lambda infected persisted necessary animal aRefractory aCriterion habitat linkAnimals]
 patches-own [terrain]
 globals [max-agents]
 
@@ -6,15 +6,15 @@ to setup
   clear-all                                               ;; Clear all turtles and patches instanciated
   import-pcolors "terrain16bit.png"                       ;; Loads an image as a background from the current directory the model was launched from
   import-drawing "terrain.png"                            ;; Import colors of the backgraound image to the patches
-  ;setup-elements                                          ;; Setup the board with background and some turtles as the local and the animals to study
-  setup_terrain
+  setup-terrain
+  setup-animals                                           ;; Setup the board with background and some turtles as the local and the animals to study
 
   calculate-lambda
   set max-agents count turtles with [agents]
   reset-ticks
 end
 
-to setup_terrain                                          ;; Setup terrain properties accordingly to the background color
+to setup-terrain                                          ;; Setup terrain properties accordingly to the background color
   ask patches with [(pcolor >= 41 and pcolor <= 45.5) ][
     set terrain "grass"
   ]
@@ -37,155 +37,73 @@ to setup_terrain                                          ;; Setup terrain prope
   ]
 end
 
-to set_human                                               ;; Put humans on map, accordingly to the terrain allowed to then, and creat links to stablish a human graph
-  ifelse any? turtles with [animal = "human"]
-  [show "Humans already set!"]
-  [
+to setup-animals
+  file-open animals_file
+  let animalsList file-read
+  while[not file-at-end?][
+    let animalData file-read
+    show animalData
     let x 0
     let y 0
     while[x <= max-pxcor][
       while[y <= max-pycor][
-        if([terrain] of patch x y = "urban")[
-          create-turtles 1 [
-            set color green
-            set animal "human"
-            set shape "person"
-            setxy x y
-            set agents false
-            set infected false
-            set necessary false
-          ]
+        let habitatsList item 3 animalData
+        foreach habitatsList [
+          [habitatsListItem] -> create-animal x y habitatsListItem animalData
         ]
         set y y + 1
       ]
       set x x + 1
       set y 0
     ]
-
-    ask turtles with [animal = "human"][
-      let neighborsWho [who] of turtles-on neighbors
-      show neighborsWho
-      let whileCount 0
-      while[whileCount <= length neighborsWho - 1][
-        let whoNumber item whileCount neighborsWho
-        if(([animal] of turtle whoNumber = "human") and
-          (not in-link-neighbor? turtle whoNumber))[
-          create-link-to turtle whoNumber
-          ]
-        set whileCount whileCount + 1
-      ]
-    ]
   ]
+  file-close
 
-
-
-end
-
-to set_squirrel                                               ;; Put squirrel on map, accordingly to the terrain allowed to then, and creat links to stablish a squirrel graph
-  ifelse any? turtles with [animal = "squirrel"]
-  [show "Squirrel already set!"]
-  [
-    let x 0
-    let y 0
-    while[x <= max-pxcor][
-      while[y <= max-pycor][
-        if([terrain] of patch x y = "grass")[
-          create-turtles 1 [
-            set color green
-            set animal "squirrel"
-            set shape "squirrel"
-            setxy x y
-            set agents false
-            set infected false
-            set necessary false
-          ]
+  let whileCount1 0
+  while[whileCount1 < length animalsList][
+    ask turtles with [animal = item whileCount1 animalsList][
+      let neighborsWho [who] of turtles-on neighbors
+      let whileCount2 0
+      while[whileCount2 <= length neighborsWho - 1][
+        let whoNumber item whileCount2 neighborsWho
+        foreach linkAnimals [
+          [animalToLink] -> create-links animalToLink whoNumber
         ]
-        set y y + 1
-      ]
-      set x x + 1
-      set y 0
-    ]
-
-    ask turtles with [animal = "squirrel"][
-      let neighborsWho [who] of turtles-on neighbors
-      show neighborsWho
-      let whileCount 0
-      while[whileCount <= length neighborsWho - 1][
-        let whoNumber item whileCount neighborsWho
-        if(([animal] of turtle whoNumber = "squirrel") and
-          (not in-link-neighbor? turtle whoNumber))[
-          create-link-to turtle whoNumber
-          ]
-        set whileCount whileCount + 1
+        set whileCount2 whileCount2 + 1
       ]
     ]
+    set whileCount1 whileCount1 + 1
   ]
 
 
 
 end
 
-to set_bug                                                   ;; Put bugs on map, accordingly to the terrain allowed to then, and creat links connecting bugs to bugs and bugs to human, if they are on the map.
-  ifelse any? turtles with [animal = "bug"]
-  [show "Bugs already set!"]
-  [
-    let x 0
-    let y 0
-    while[x <= max-pxcor][
-      while[y <= max-pycor][
-        if(([terrain] of patch x y = "urban") or
-          ([terrain] of patch x y = "forest") or
-          ([terrain] of patch x y = "grass") and
-          (all? [turtles-at x y] of patch 0 0 [animal != "squirrel"]))[
-          create-turtles 1 [
-            set color yellow
-            set animal "bug"
-            set shape "bug"
-            setxy x y
-            set agents false
-            set infected false
-            set necessary false
-          ]
-        ]
-        set y y + 1
-      ]
-      set x x + 1
-      set y 0
-    ]
-
-    ask turtles with [animal = "bug"][
-      let neighborsWho [who] of turtles-on neighbors
-      show neighborsWho
-      let whileCount 0
-      while[whileCount <= length neighborsWho - 1][
-        let whoNumber item whileCount neighborsWho
-        if(([animal] of turtle whoNumber = "bug") or
-          ([animal] of turtle whoNumber = "human") or
-         ([animal] of turtle whoNumber = "squirrel") and
-          (not in-link-neighbor? turtle whoNumber))[
-          create-link-to turtle whoNumber
-          ]
-        set whileCount whileCount + 1
-      ]
-    ]
-
-    ask turtles with [animal = "bug"][
-      let patchmatesWho [who] of turtles-here
-      show patchmatesWho
-      let whileCount 0
-      while [whileCount < length patchmatesWho - 1][
-        let whoNumber item whileCount patchmatesWho
-        if(([animal] of turtle whoNumber = "human") and
-          (not in-link-neighbor? turtle whoNumber))[
-          create-link-to turtle whoNumber
-          ]
-        set whileCount whileCount + 1
-      ]
-
+to create-animal [x y habitatsListItem animalData]
+  if ([terrain] of patch x y = habitatsListItem)[
+    create-turtles 1 [
+      set animal item 0 animalData
+      set shape item 1 animalData
+      set color item 2 animalData
+      set habitat item 3 animalData
+      set linkAnimals item 4 animalData
+      setxy x y
+      set agents false
+      set infected false
+      set necessary false
+      set aRefractory 0
+      set aCriterion 0
     ]
   ]
-
 end
+
+to create-links [animalToLink whoNumber]
+  if(([animal] of turtle whoNumber = animalToLink) and
+    (not in-link-neighbor? turtle whoNumber))[
+    create-link-to turtle whoNumber
+    ]
+end
+
 
 to infect                                                        ;; Select a random bug to infect
   let listWhoNumbers [who] of turtles with [shape = "bug"]
@@ -276,11 +194,11 @@ ask turtles with [agents] [
     [set max-agents count turtles with [agents]]
 end
 
-;to put-agents-on-map
-;  ask turtles with [shape = "wolf"] [
-;      send-agent-to-clean turtle who
-;    ]
-;end
+to put-agents-on-map
+  ask turtles with [shape = "wolf"] [
+      send-agent-to-clean turtle who
+    ]
+end
 
 to send-agent-to-clean [animalWho]
   ask animalWho [
@@ -367,11 +285,11 @@ NIL
 CHOOSER
 5
 57
-143
+168
 102
-file
-file
-"setup1.nl" "setup2.nl"
+animals_file
+animals_file
+"config_animals.nl"
 0
 
 BUTTON
@@ -473,63 +391,12 @@ NIL
 1
 
 BUTTON
-3
-239
-105
-272
-set-human
-set_human
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-4
-282
-85
-315
-set-bug
-set_bug
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
 5
 406
 72
 439
 NIL
 infect
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-2
-202
-108
-235
-set-squirrel
-set_squirrel
 NIL
 1
 T

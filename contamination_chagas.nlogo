@@ -1,4 +1,4 @@
-turtles-own [agent lambda infected persisted necessary animal aRefractory aCriterion habitat linkAnimals]
+turtles-own [agent lambda infected persisted necessary animal aResilency aCriterion habitat linkAnimals]
 patches-own [terrain]
 globals [max-agents]
 
@@ -62,7 +62,21 @@ to setup-animals
   let whileCount1 0
   while[whileCount1 < length animalsList][
     ask turtles with [animal = item whileCount1 animalsList][
+      ;; Identify the who number of animals in same patch and in neighbors patches
+      let turtleWho who
+      let samePatchWhos [who] of turtles-here with [who !=  turtleWho]
       let neighborsWho [who] of turtles-on neighbors
+
+      ;; Put all who numbers on same list if exist animals in same patch
+      ;; if[length samePatchWhos > 0][
+        let countWho 0
+        while[countWho < length samePatchWhos][
+          set neighborsWho fput item countWho samePatchWhos neighborsWho
+          set countWho countWho + 1
+        ]
+      ;;]
+
+      ;; Link animals falling the rules in the configuration file
       let whileCount2 0
       while[whileCount2 <= length neighborsWho - 1][
         let whoNumber item whileCount2 neighborsWho
@@ -89,7 +103,7 @@ to create-animal [x y habitatsListItem animalData]
       set agent false
       set infected false
       set necessary false
-      set aRefractory 0
+      set aResilency 0
       set aCriterion 0
     ]
   ]
@@ -104,12 +118,12 @@ end
 
 to set-constraints
   ask turtles with [ animal = animal-chooser ][
-    set aRefractory refractory
+    set aResilency resilency
     set aCriterion criterion
   ]
 
   output-print animal-chooser
-  output-print refractory
+  output-print resilency
   output-print criterion
   output-print ""
 end
@@ -136,8 +150,8 @@ to step                                                          ;; Controls pro
     revert-edges turtle who
   ]
 
-  clean
   spread
+  clean
   calculate-lambda
   tick
 end
@@ -147,7 +161,7 @@ to spread                                                           ;; Spread co
     ask out-link-neighbors[
       if(not infected and not agent)[
         ifelse ((count out-link-neighbors with [infected] + count in-link-neighbors with [infected]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > aCriterion [
-          ifelse persisted < aRefractory [
+          ifelse persisted < aResilency [
             set necessary false
             set persisted persisted + 1
           ] [
@@ -204,7 +218,7 @@ to clean
     ask out-link-neighbors [
       if(infected and not agent)[
         ifelse ((count out-link-neighbors with [agent] + count in-link-neighbors with [agent]) / (count out-link-neighbors + count in-link-neighbors)) * 100 > aCriterion [
-          ifelse persisted < aRefractory [
+          ifelse persisted < aResilency [
             set necessary false
             set persisted persisted + 1
           ] [
@@ -281,13 +295,13 @@ to continue-lambda [animalsWho]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-256
-15
-951
-711
+277
+10
+867
+601
 -1
 -1
-76.33333333333334
+64.7
 1
 16
 1
@@ -360,7 +374,7 @@ criterion
 criterion
 0
 100
-20.0
+6.0
 1
 1
 NIL
@@ -371,11 +385,11 @@ SLIDER
 415
 175
 448
-refractory
-refractory
+resilency
+resilency
 0
 10
-2.0
+1.0
 1
 1
 NIL
@@ -900,7 +914,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0
+NetLogo 6.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
